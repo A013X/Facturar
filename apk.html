@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+    .boton{
+        display: block;       /* Ocupa toda la línea */
+        width: 200px;         
+        margin: 10px auto;    /* Espacio y centrado horizontal */
+        padding: 10px;
+        font-size: 16px;
+        cursor: pointer;
+    }
+    .centrar{
+        width: 200px;         
+        margin: 10px auto;    /* Espacio y centrado horizontal */
+        padding: 30px;
+        font-size: 40px;
+        cursor: pointer;
+    }
+    .seccion{
+        display: none;
+        width: 100%;
+        height: 100%;
+        position: fixed;
+        z-index: 1000;  /* mostrar por encima de otros elementos*/
+        inset: 0;       /* colocar todos sus bordes en la posicion para evitar que aparezcan debajo de lo demas*/
+        background: white;
+    }
+
+    </style>
+</head>
+<body>
+    
+    <button class="boton" data-target = 'factura1'>Facturar</button>
+    <button class="boton" data-target = 'factura2'>Estadisticas</button>
+    <button class="boton" data-target = 'factura3'>Facturas de la casa</button>
+
+    <div class="seccion" id="factura1">
+    <input type="number" class="centrar" id="factura-precio" placeholder="Precio">
+    <input type="text" class="centrar" id = "factura-nombre" placeholder="Nombre">
+    <input type="text" class="centrar" id = "factura-talla" placeholder="Talla-Opcional">
+    <input type="number" class="centrar" id = "factura-cantidad" placeholder="Cantidad-Opcional">
+
+    <!-- 
+    <table>
+        <thead>
+            <tr>
+                <th>Precio</th>
+                <th>Nombre</th>
+                <th>Talla</th>
+                <th>Cantidad</th>
+            </tr>
+        </thead>
+        <tbody id = 'tabla-ventas'>
+        
+        </tbody>
+    </table>
+-->
+    <button class ='boton'> regresar</button>
+    </div>
+
+    <div class="seccion" id="factura2">
+    hola soy la pagina de factura
+    <button class ='boton'> regresar</button>
+    </div>
+
+    <div class="seccion" id="factura3">
+    hola soy la pagina de factura
+    <button class ='boton'> regresar</button>
+    </div>
+    
+    <script src = "scripts.js"></script>
+
+</body>
+</html>
