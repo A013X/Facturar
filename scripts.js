@@ -5,12 +5,24 @@ organizar ideas para el proyecto
 (1) -> Necesito guardar y organizar los datos que saque de los botones de los html
 OK (1.1) -> Aprender a almacenar datos en javascript
 OK (1.2) -> Crear un arreglo de objetos y almacenar las variables de este
+OK (1.3) -> el boton de facturar
+OK (1.4) -> la tabla para ensenar las facturas
+OK (1.5) -> pensar como voy a compartir los datos
+OK (1.6) -> la funcion para exportar e importar datos
+OK (1.6.1) -> exportar datos terminada
+OK (1.6.2) -> funcion para juntar todos los json en uno
+(1.6.2) -> importar datos cambiado por analizarlos y sacarle estadistica
 */
 const botones = document.querySelectorAll('.boton');
 const secciones = document.querySelectorAll('.seccion');
 
+// crear el archivo donde se almacenan los datos y guardarlo por esta secion
 let facturas = JSON.parse(localStorage.getItem('facturas')) || [];
+let facturas_totales = JSON.parse(localStorage.getItem('facturas_totales')) || {};
+let ganancia = JSON.parse(localStorage.getItem('ganancia'));
+let piezas = JSON.parse(localStorage.getItem('piezas'));
 
+//botones
 function redirigir(event){
     const id = event.currentTarget.getAttribute('data-target');
     document.getElementById(id).style.display = 'block';
@@ -22,18 +34,19 @@ function regresar(event){
     });
 }
 
-/*function facturar(){
+//seleccionar boton directamente y anadir la funcion de factura
+document.getElementById('boton-facturar').addEventListener('click' , function(){
+   
     nombre = document.getElementById('factura-nombre').value;
     talla = document.getElementById('factura-talla').value || 'sin precisar';
     cantidad = document.getElementById('factura-cantidad').value || 1;
     precio = document.getElementById('factura-precio').value;
 
-    if(nombre == null || precio == null){
+    if(nombre == '' || precio == ''){
         alert("Falta la informacion del nombre o el precio");
         return;
     }
     
-
     let compra = {
         nombre:nombre,
         talla:talla,
@@ -42,24 +55,98 @@ function regresar(event){
     };
 
     facturas.push(compra);
-    guardar_compra();
+    ganancia += +precio, piezas += +cantidad;
 
+    document.getElementById('ganancias').innerText = ganancia;
+    document.getElementById('piezas').innerText = piezas;
+    
     nombre = document.getElementById('factura-nombre').value = '';
     talla = document.getElementById('factura-talla').value = '';
     cantidad = document.getElementById('factura-cantidad').value = '';
     precio = document.getElementById('factura-precio').value = '';
 
-}
- 
- function guardar_compra(){
+    //guardar la compra 
     localStorage.setItem('facturas', JSON.stringify(facturas));
- }*/
+    localStorage.setItem('ganancia', ganancia);
+    localStorage.setItem('piezas', piezas);
+    actualizar_tabla();
+    
+});
 
+//funcion terminar ventas
+document.getElementById('terminar-ventas').addEventListener('click' , function(){
+    const facturact = JSON.parse(localStorage.getItem('facturas')) || [];
+    const elemen = JSON.stringify(facturact);
+    const ventas = new Blob([elemen], {type: 'application/json'});
+    const url = URL.createObjectURL(ventas);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'ventas.json';
+    link.click();
+    facturas = [], ganancia = 0, piezas = 0;
+    localStorage.setItem('facturas', JSON.stringify(([])));
+    localStorage.setItem('ganancia', 0);
+    localStorage.setItem('piezas', 0);
+});
+/*
+que queremos para la funcion de estadistica
 
+* primero que funcione para un solo dia
+* que saque ganancias y piezas vendidas en el dia
+*/
+let factura_ganancia = 0, factura_piezas = 0, popular = {}, hora;
+document.getElementById('resumir-ventas').addEventListener('click' , function(){
+    const texto = localStorage.getItem('facturas_totales');
+    const datos = JSON.parse(texto);
+    texto.forEach(textos => {
+        console.log(textos);
+    });
+});
+
+//unir todos los archivos json seleccionados y guardarlos en local storage
+document.getElementById('unir-json').addEventListener('click' , async function(){
+    const archivos = document.getElementById('archivos-json').files;
+    let facturas_tot = {};
+    let fecha = new Date().toISOString().split('T')[0];
+    let nuevo_archivo = [];
+    for(let i = 0 ; i < archivos.length ; i++){
+        const archivo = archivos[i];
+        const text = await archivo.text();
+        const datos = JSON.parse(text);
+        nuevo_archivo = nuevo_archivo.concat(datos);
+        }
+    facturas_tot[fecha] = nuevo_archivo;
+    localStorage.setItem('facturas_totales' , JSON.stringify(facturas_tot));
+    console.log(localStorage.getItem('facturas_totales'));
+});
+
+// para cargar la informacion de la tabl, las piezas y las ganancias
+document.getElementById('mostrar-datos').addEventListener('click' , function(){
+    actualizar_tabla();
+    document.getElementById('ganancias').innerText = ganancia;
+    document.getElementById('piezas').innerText = piezas;
+});
+
+function actualizar_tabla(){
+    const tabla = document.getElementById('tabla-ventas');
+    tabla.innerHTML = '';
+
+    facturas.forEach(factura =>{
+        const actual = document.createElement('tr');
+        actual.innerHTML = `
+        <td>${factura.nombre}</td>
+        <td>${factura.talla}</td>
+        <td>${factura.cantidad}</td>
+        <td>${factura.precio}</td>
+        `;
+    tabla.appendChild(actual);
+    });
+}
+// agregar alguna funcionalidad a los botones
 botones.forEach(boton => {
     if(boton.getAttribute('data-target'))
     boton.addEventListener('click' , redirigir);
     
-    else
+    else if(!(boton.getAttribute('id')))
     boton.addEventListener('click' , regresar);
 });
