@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    
+    <button class="boton" data-target = 'factura1'>Facturar</button>
+    <button class="boton" data-target = 'factura2'>Utiles</button>
+    <button class="boton" data-target = 'factura3'>Estadisticas</button>
+
+    <div class="seccion" id="factura1">
+    <input type="number" class="centrar" id="factura-precio" placeholder="Precio">
+    <input type="text" class="centrar" id = "factura-nombre" placeholder="Nombre">
+    <input type="text" class="centrar" id = "factura-talla" placeholder="Talla">
+    <input type="number" class="centrar" id = "factura-cantidad" placeholder="Cantidad">
+
+    <button class ='boton' id = 'boton-facturar'> Facturar</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Precio</th>
+                <th>Nombre</th>
+                <th>Talla</th>
+                <th>Cantidad</th>
+            </tr>
+        </thead>
+        <tbody id = 'tabla-ventas'>
+        
+        </tbody>
+    </table>
+    <pre id = 'ganancias'>Ganancias hoy: </pre> 
+    <pre id = 'piezas'>Piezas hoy: </pre>
+    <button class ='boton' id = 'mostrar-datos'> Mostrar Datos</button>
+    <button class ='boton'> regresar</button>
+    </div>
+
+    <div class="seccion" id="factura2">
+    <button class ='boton' id ='terminar-ventas'> Terminar las Ventas</button>
+    <input type="file" class='archivo-json' id="archivos-json" accept=".json" multiple>
+    <button class ='boton' id = 'unir-json'> Unir todos los archivos</button>
+    <button class ='boton'> regresar</button>
+    </div>
+
+    <div class="seccion" id="factura3">
+    Toca en los diferentes botones para generar una estadistica
+    <button class ='boton' onclick="resumir_ventas('hoy')" id = "hola">Hoy</button>
+    <button class ='boton' onclick="resumir_ventas('Tot')" id = "hola2">Todas las Ventas</button>
+    <div id = 'estadisticas-simples'>
+    <div id = 'ventas-rapidas'></div>
+    </div>
+    <button class ='boton'> regresar</button>
+    </div>
+    
+    <script src = "scripts.js"></script>
+</body>
+</html>
