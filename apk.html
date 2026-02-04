@@ -32,40 +32,26 @@
         
         </tbody>
     </table>
-    Ganancia --- Piezas
-    <pre id = 'ganancias'></pre> 
-    <pre id = 'piezas'></pre>
+    <pre id = 'ganancias'>Ganancias hoy: </pre> 
+    <pre id = 'piezas'>Piezas hoy: </pre>
     <button class ='boton' id = 'mostrar-datos'> Mostrar Datos</button>
     <button class ='boton'> regresar</button>
     </div>
 
     <div class="seccion" id="factura2">
     <button class ='boton' id ='terminar-ventas'> Terminar las Ventas</button>
+    <input type="file" class='archivo-json' id="archivos-json" accept=".json" multiple>
     <button class ='boton' id = 'unir-json'> Unir todos los archivos</button>
-    
-    <input type="file" id="archivos-json" multiple accept=".json">
-    <table>
-        <thead>
-            <tr>
-                <th>Precio</th>
-                <th>Nombre</th>
-                <th>Talla</th>
-                <th>Cantidad</th>
-            </tr>
-        </thead>
-        <tbody id = 'tabla-ventas'>
-        
-        </tbody>
-    </table>
-    Ganancia --- Piezas
-    <pre id = 'ganancias-totales'></pre> 
-    <pre id = 'piezas-totales'></pre>
     <button class ='boton'> regresar</button>
     </div>
 
     <div class="seccion" id="factura3">
-    aqui deberian de ir algunos botones de estadisticas
-    <button class ='boton' id = 'resumir-ventas'> Resumen de las Ventas</button>
+    Toca en los diferentes botones para generar una estadistica
+    <button class ='boton' onclick="resumir_ventas('hoy')" id = "hola">Hoy</button>
+    <button class ='boton' onclick="resumir_ventas('Tot')" id = "hola2">Todas las Ventas</button>
+    <div id = 'estadisticas-simples'>
+    <div id = 'ventas-rapidas'></div>
+    </div>
     <button class ='boton'> regresar</button>
     </div>
     

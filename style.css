@@ -25,3 +25,47 @@
         -webkit-overflow-scrolling: touch; /*para scrollear con mas suavidad*/
 
     }
+
+    /*no funciona como los otros elementos al ser un input con un tipo fijado*/
+    .archivo-json{
+    display: block;        /* Necesario para margin auto */
+    width: 200px;          /* Ancho definido */
+    margin: 10px auto;     /* Centrado automático */
+    padding: 10px;
+    }
+    .caja-contenedor {
+    background: whitesmoke;
+    border-radius: 20px;
+    padding: 30px;
+    width: 100%;
+    }
+
+    .caja-stats{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+
+        padding: 20px;
+        margin-bottom: 25px;
+    }
+
+    .carta-stats{
+       background: white;               
+        border-radius: 8px;                
+        padding: 20px;                     
+        text-align: center;                
+        border: 2px solid #e9ecef;         
+        transition: all 0.3s;    
+    }
+
+    .numeros-stats{
+        font-size: 2em;
+        margin: 10px;
+    }
+    .letras-stats{
+        color:grey;
+        letter-spacing: 1px;
+    }
+
+    .caja-titulo{
+        margin-botom: 20px;
+    }

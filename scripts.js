@@ -94,17 +94,60 @@ que queremos para la funcion de estadistica
 * primero que funcione para un solo dia
 * que saque ganancias y piezas vendidas en el dia
 */
-let factura_ganancia = 0, factura_piezas = 0, popular = {}, hora;
-document.getElementById('resumir-ventas').addEventListener('click' , function(){
-    const texto = localStorage.getItem('facturas_totales');
-    const datos = JSON.parse(texto);
-    texto.forEach(textos => {
-        console.log(textos);
-    });
-});
+let factura_ganancia = 0, factura_piezas = 0, producto_popular = {}, producto_ganancia = {};
+function resumir_ventas(dia){
+    console.log(facturas_totales);
+    let fact = Object.values(facturas_totales);
+    
+    for(let i = 0 ; i < fact.length ; i++){
+        for(let y = 0 ; y < fact[i].length; y++){
+            factura_ganancia += +fact[i][y].precio;
+            factura_piezas += +fact[i][y].cantidad;
+            if(!(producto_popular[fact[i][y].nombre])) producto_popular[fact[i][y].nombre] = 0;
+            if(!(producto_ganancia[fact[i][y].nombre])) producto_ganancia[fact[i][y].nombre] = 0;
+            producto_popular[fact[i][y].nombre] += +fact[i][y].cantidad;
+            producto_ganancia[fact[i][y].nombre] += +fact[i][y].precio * +fact[i][y].cantidad;
+            }
+        if(dia === 'hoy') break;
+        }
+    
+    const producto_popular_ordenado = Object.entries(producto_popular).sort((a, b) => a[1] - b[1]);
+    const producto_ganancia_ordenado = Object.entries(producto_ganancia).sort((a, b) => a[1] - b[1]);
+    document.getElementById('ventas-rapidas').innerHTML = `
+    <div class='caja-contenedor'>
+        <h1 class='caja-titulo'> Estadisticas Rapidas </h1>
+        <div class='caja-stats'>
+        
+            <div class='carta-stats'>
+                <div class='numeros-stats'>${factura_ganancia}</div>
+                <div class='letras-stats'>Ganancias</div>
+            </div>
+
+            <div class='carta-stats'>
+                <div class='numeros-stats'>${factura_piezas}</div>
+                <div class='letras-stats'>Productos Vendidos</div>
+            </div>
+
+            <div class='carta-stats'>
+                <div class='numeros-stats'>${producto_popular_ordenado[0][0]}</div>
+                <div class='letras-stats'>Producto mas vendido</div>
+            </div>
+
+            <div class='carta-stats'>
+                <div class='numeros-stats'>${producto_ganancia_ordenado[0][0]}</div>
+                <div class='letras-stats'>Productos con mas ganancia</div>
+            </div>
+
+        </div>
+    </div>
+    `
+
+    factura_ganancia = 0, factura_piezas = 0, producto_popular = {}, producto_ganancia = {};
+}
 
 //unir todos los archivos json seleccionados y guardarlos en local storage
 document.getElementById('unir-json').addEventListener('click' , async function(){
+    console.log('h');
     const archivos = document.getElementById('archivos-json').files;
     let facturas_tot = {};
     let fecha = new Date().toISOString().split('T')[0];
@@ -123,8 +166,8 @@ document.getElementById('unir-json').addEventListener('click' , async function()
 // para cargar la informacion de la tabl, las piezas y las ganancias
 document.getElementById('mostrar-datos').addEventListener('click' , function(){
     actualizar_tabla();
-    document.getElementById('ganancias').innerText = ganancia;
-    document.getElementById('piezas').innerText = piezas;
+    document.getElementById('ganancias').innerText = 'Ganancias hoy: ' +  ganancia ;
+    document.getElementById('piezas').innerText = 'Piezas hoy: ' + piezas;
 });
 
 function actualizar_tabla(){
@@ -134,10 +177,10 @@ function actualizar_tabla(){
     facturas.forEach(factura =>{
         const actual = document.createElement('tr');
         actual.innerHTML = `
+        <td>${factura.precio}</td>
         <td>${factura.nombre}</td>
         <td>${factura.talla}</td>
         <td>${factura.cantidad}</td>
-        <td>${factura.precio}</td>
         `;
     tabla.appendChild(actual);
     });
