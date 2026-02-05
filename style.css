@@ -41,7 +41,7 @@
 
     .caja-stats{
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
         padding: 20px;
         margin-bottom: 25px;
     }
@@ -51,8 +51,7 @@
         border-radius: 8px;                
         padding: 20px;                     
         text-align: center;                
-        border: 2px solid #e9ecef;         
-        transition: all 0.3s;    
+        border: 2px solid #e9ecef;          
     }
 
     .numeros-stats{
