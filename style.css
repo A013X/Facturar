@@ -36,14 +36,12 @@
     .caja-contenedor {
     background: whitesmoke;
     border-radius: 20px;
-    padding: 30px;
     width: 100%;
     }
 
     .caja-stats{
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
-
         padding: 20px;
         margin-bottom: 25px;
     }
