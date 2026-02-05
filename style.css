@@ -69,3 +69,39 @@
     .caja-titulo{
         margin-botom: 20px;
     }
+
+#tablas-ranking {
+    margin: 20px 0;
+}
+
+
+.tabla-ranking {
+    margin-bottom: 25px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.tabla-ranking h3 {
+    margin: 0;
+    padding: 15px;
+    text-align: center;
+    font-size: 18px;
+}
+
+#tablas-ranking table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#tablas-ranking th {
+    padding: 12px 8px;
+    text-align: left;
+}
+
+#tablas-ranking td:first-child {
+    font-weight: bold;
+    width: 40px;
+    text-align: center;
+}
+

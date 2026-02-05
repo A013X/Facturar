@@ -1,4 +1,3 @@
-
 /*
 organizar ideas para el proyecto
 
@@ -13,14 +12,18 @@ OK (1.6.1) -> exportar datos terminada
 OK (1.6.2) -> funcion para juntar todos los json en uno
 (1.6.2) -> importar datos cambiado por analizarlos y sacarle estadistica
 */
+
 const botones = document.querySelectorAll('.boton');
 const secciones = document.querySelectorAll('.seccion');
 
-// crear el archivo donde se almacenan los datos y guardarlo por esta secion
 let facturas = JSON.parse(localStorage.getItem('facturas')) || [];
-let facturas_totales = JSON.parse(localStorage.getItem('facturas_totales')) || {};
+let facturas_totales = {};
 let ganancia = JSON.parse(localStorage.getItem('ganancia'));
 let piezas = JSON.parse(localStorage.getItem('piezas'));
+
+localforage.getItem('facturas_totales').then(function(data) {
+    facturas_totales = data || {};
+});
 
 //botones
 function redirigir(event){
@@ -88,6 +91,7 @@ document.getElementById('terminar-ventas').addEventListener('click' , function()
     localStorage.setItem('ganancia', 0);
     localStorage.setItem('piezas', 0);
 });
+
 /*
 que queremos para la funcion de estadistica
 
@@ -95,9 +99,12 @@ que queremos para la funcion de estadistica
 * que saque ganancias y piezas vendidas en el dia
 */
 let factura_ganancia = 0, factura_piezas = 0, producto_popular = {}, producto_ganancia = {};
-function resumir_ventas(dia){
-    console.log(facturas_totales);
-    let fact = Object.values(facturas_totales);
+
+async function resumir_ventas(dia){
+    const datosIndexedDB = await localforage.getItem('facturas_totales');
+    console.log(datosIndexedDB);
+    
+    let fact = Object.values(datosIndexedDB || {});
     
     for(let i = 0 ; i < fact.length ; i++){
         for(let y = 0 ; y < fact[i].length; y++){
@@ -107,12 +114,43 @@ function resumir_ventas(dia){
             if(!(producto_ganancia[fact[i][y].nombre])) producto_ganancia[fact[i][y].nombre] = 0;
             producto_popular[fact[i][y].nombre] += +fact[i][y].cantidad;
             producto_ganancia[fact[i][y].nombre] += +fact[i][y].precio * +fact[i][y].cantidad;
-            }
-        if(dia === 'hoy') break;
         }
+        if(dia === 'hoy') break;
+    }
     
-    const producto_popular_ordenado = Object.entries(producto_popular).sort((a, b) => a[1] - b[1]);
-    const producto_ganancia_ordenado = Object.entries(producto_ganancia).sort((a, b) => a[1] - b[1]);
+    const producto_popular_ordenado = Object.entries(producto_popular).sort((a, b) => b[1] - a[1]);
+    const producto_ganancia_ordenado = Object.entries(producto_ganancia).sort((a, b) => b[1] - a[1]);
+    
+    let tablaPopularBody = document.querySelector('#tabla-popular tbody');
+    tablaPopularBody.innerHTML = ''; 
+    let num = 1;
+    
+    producto_popular_ordenado.forEach(productos => {
+        const fila = document.createElement('tr');
+        fila.innerHTML = `
+        <td>${num}</td>
+        <td>${productos[0]}</td>
+        <td>${productos[1]}</td>
+        `;
+        num++;
+        tablaPopularBody.appendChild(fila);
+    });
+    
+    let tablaGananciasBody = document.querySelector('#tabla-ganancias tbody');
+    tablaGananciasBody.innerHTML = '';
+    let num2 = 1;
+    
+    producto_ganancia_ordenado.forEach(productos => {
+        const fila = document.createElement('tr');
+        fila.innerHTML = `
+        <td>${num2}</td>
+        <td>${productos[0]}</td>
+        <td>$${productos[1]}</td>
+        `;
+        num2++;
+        tablaGananciasBody.appendChild(fila);
+    });
+
     document.getElementById('ventas-rapidas').innerHTML = `
     <div class='caja-contenedor'>
         <h1 class='caja-titulo'> Estadisticas Rapidas </h1>
@@ -135,32 +173,35 @@ function resumir_ventas(dia){
 
             <div class='carta-stats'>
                 <div class='numeros-stats'>${producto_ganancia_ordenado[0][0]}</div>
-                <div class='letras-stats'>Productos con mas ganancia</div>
+                <div class='letras-stats'>Producto con mas ganancia</div>
             </div>
 
         </div>
-    </div>
-    `
+    </div>`;
 
     factura_ganancia = 0, factura_piezas = 0, producto_popular = {}, producto_ganancia = {};
 }
 
-//unir todos los archivos json seleccionados y guardarlos en local storage
 document.getElementById('unir-json').addEventListener('click' , async function(){
-    console.log('h');
     const archivos = document.getElementById('archivos-json').files;
-    let facturas_tot = {};
     let fecha = new Date().toISOString().split('T')[0];
     let nuevo_archivo = [];
+    
     for(let i = 0 ; i < archivos.length ; i++){
         const archivo = archivos[i];
         const text = await archivo.text();
         const datos = JSON.parse(text);
         nuevo_archivo = nuevo_archivo.concat(datos);
-        }
-    facturas_tot[fecha] = nuevo_archivo;
-    localStorage.setItem('facturas_totales' , JSON.stringify(facturas_tot));
-    console.log(localStorage.getItem('facturas_totales'));
+    }
+    
+    if(facturas_totales[fecha]) {
+        facturas_totales[fecha] = [...facturas_totales[fecha], ...nuevo_archivo];
+    } else {
+        facturas_totales[fecha] = nuevo_archivo;
+    }
+    
+    await localforage.setItem('facturas_totales', facturas_totales);
+    console.log(localforage.getItem('facturas_totales'));
 });
 
 // para cargar la informacion de la tabl, las piezas y las ganancias
@@ -185,6 +226,7 @@ function actualizar_tabla(){
     tabla.appendChild(actual);
     });
 }
+
 // agregar alguna funcionalidad a los botones
 botones.forEach(boton => {
     if(boton.getAttribute('data-target'))

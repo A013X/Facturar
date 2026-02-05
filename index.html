@@ -52,9 +52,47 @@
     <div id = 'estadisticas-simples'>
     <div id = 'ventas-rapidas'></div>
     </div>
-    <button class ='boton'> regresar</button>
+    <div id="ventas-rapidas"></div>
+
+<div id="tablas-ranking">
+    <div class="tabla-ranking">
+        <h3>Productos mas vendidos</h3>
+        <table id="tabla-popular">
+            <thead>
+                <tr>
+                    <th>Posición</th>
+                    <th>Producto</th>
+                    <th>Cantidad Vendida</th>
+                </tr>
+            </thead>
+            <tbody>
+               
+            </tbody>
+        </table>
     </div>
     
+    <div class="tabla-ranking">
+        <h3>Productos de mayor Ganancia</h3>
+        <table id="tabla-ganancias">
+            <thead>
+                <tr>
+                    <th>Posición</th>
+                    <th>Producto</th>
+                    <th>Ganancia Total</th>
+                </tr>
+            </thead>
+            <tbody>
+               
+            </tbody>
+        </table>
+    </div>
+</div>
+    <button class ='boton'> regresar</button>
+    </div>
+
+     <!--database es IndexedDb-->
+    <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
     <script src = "scripts.js"></script>
+   
 </body>
 </html>
