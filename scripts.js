@@ -1,6 +1,8 @@
-
-// firebase ancla
-
+// ============================================
+// 🔥 CONFIGURACIÓN FIREBASE
+// ============================================
+// Estas claves son públicas por diseño en Firebase: la seguridad depende de
+// las reglas de Firestore, no de ocultar esta configuración.
 const firebaseConfig = {
     apiKey: "AIzaSyBRZVf829REY05994GpM995eP8vnLHxxR0",
     authDomain: "facturar-aa9e6.firebaseapp.com",
@@ -13,21 +15,44 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// variables ancla 
-
+// ============================================
+// 📦 VARIABLES GLOBALES
+// ============================================
 let facturasDelDia = [];
 let gananciaHoy = 0;
 let piezasHoy = 0;
 let dineroEnCaja = 0;
 let tasaDelDia = 300; // Por defecto arranca en 300
-const HOY = new Date().toISOString().split('T')[0];
 
-// nav ancla
+// Fecha de HOY en la hora local del dispositivo (AAAA-MM-DD).
+// Antes se usaba toISOString(), que va en hora UTC: en Cuba, a partir de las
+// 19-20 h las ventas se guardaban con la fecha del día siguiente.
+function fechaLocal(d = new Date()) {
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+}
+const HOY = fechaLocal();
 
+function textoPrecio(f) {
+    return f.moneda === 'USD' ? `$${f.precioMostrar} USD` : `$${f.precioMostrar} CUP`;
+}
+
+function errorFirebase(contexto, err) {
+    console.error(`Error en ${contexto}:`, err);
+    if (err && err.code === 'permission-denied') {
+        alert('No hay permiso para acceder a los datos. Revisa las reglas de Firestore en la consola de Firebase.');
+    }
+}
+
+// ============================================
+// 🔄 NAVEGACIÓN
+// ============================================
 async function redirigir(event) {
     const id = event.currentTarget.getAttribute('data-target');
     document.getElementById(id).classList.remove('hidden');
-    
+
+    // Si entró a la pantalla de facturar, forzamos a descargar los datos más recientes de Firebase
     if (id === 'factura1') {
         await recalcularCuadroOperaciones();
     }
@@ -37,27 +62,32 @@ function regresar() {
 }
 document.querySelectorAll('[data-target]').forEach(b => b.addEventListener('click', redirigir));
 
-// caja ancla 
-
+// ============================================
+// 💰 INICIAR CAJA Y TASA
+// ============================================
 async function inicializarCaja() {
-    const doc = await db.collection('config').doc(HOY).get();
-    if (doc.exists) {
-        dineroEnCaja = doc.data().monto;
-        tasaDelDia = doc.data().tasa || 300; 
-    } else {
-        const input = prompt("¿Con cuánto dinero inicia la caja hoy?");
-        if (input !== null && !isNaN(input)) {
-            dineroEnCaja = parseFloat(input);
-            await db.collection('config').doc(HOY).set({ monto: dineroEnCaja, tasa: tasaDelDia });
+    try {
+        const doc = await db.collection('config').doc(HOY).get();
+        if (doc.exists) {
+            dineroEnCaja = doc.data().monto;
+            tasaDelDia = doc.data().tasa || 300; // Cargamos la tasa si existe
+        } else {
+            const input = prompt("¿Con cuánto dinero inicia la caja hoy?");
+            if (input !== null && input.trim() !== '' && !isNaN(input)) {
+                dineroEnCaja = parseFloat(input);
+                await db.collection('config').doc(HOY).set({ monto: dineroEnCaja, tasa: tasaDelDia });
+            }
         }
+    } catch (err) {
+        errorFirebase('la caja inicial', err);
     }
     document.getElementById('dinero-caja').innerText = `En caja: $${dineroEnCaja}`;
-    document.getElementById('input-tasa').value = tasaDelDia; 
+    document.getElementById('input-tasa').value = tasaDelDia; // Mostramos la tasa en el input
 }
 
 async function editarCaja() {
     const nuevoMonto = prompt("¿Cuál es la cantidad correcta en caja?");
-    if (nuevoMonto !== null && !isNaN(nuevoMonto)) {
+    if (nuevoMonto !== null && nuevoMonto.trim() !== '' && !isNaN(nuevoMonto)) {
         dineroEnCaja = parseFloat(nuevoMonto);
         await db.collection('config').doc(HOY).set({ monto: dineroEnCaja, tasa: tasaDelDia });
         document.getElementById('dinero-caja').innerText = `En caja: $${dineroEnCaja}`;
@@ -75,8 +105,9 @@ async function guardarTasa() {
     }
 }
 
-// facturas ancla
-
+// ============================================
+// 💰 FACTURAR VENTA (CON LÓGICA DE MONEDA)
+// ============================================
 async function facturar_orden_ventas() {
     const nombre = document.getElementById('factura-nombre').value.trim();
     const talla = document.getElementById('factura-talla').value.trim() || '-';
@@ -86,7 +117,9 @@ async function facturar_orden_ventas() {
     const origen = document.getElementById('factura-origen').value;
 
     if (!nombre || isNaN(precioEscrito)) { alert("Falta nombre o precio"); return; }
+    if (precioEscrito < 0 || cantidad < 1) { alert("El precio y la cantidad deben ser positivos"); return; }
 
+    // Si es USD, lo convertimos a CUP para Firebase
     const precioRealCUP = moneda === 'USD' ? (precioEscrito * tasaDelDia) : precioEscrito;
 
     const docRef = db.collection('almacen').doc(nombre);
@@ -96,19 +129,21 @@ async function facturar_orden_ventas() {
     if (!prod || prod.cantidad === undefined) {
         const agregar = confirm(`"${nombre}" no está. ¿Añadirlo rápido?`);
         if (!agregar) return;
-        await docRef.set({ nombre, tipo: 'General', cantidad, precio: 0, venta: precioRealCUP, extra: '' });
+        // Se registra como producto vendido sin stock restante
+        await docRef.set({ nombre, tipo: 'General', cantidad: 0, precio: 0, venta: precioRealCUP, extra: '' });
     } else {
         if (prod.cantidad < cantidad) { alert(`Stock insuficiente. Quedan: ${prod.cantidad}`); return; }
         const nuevaCant = prod.cantidad - cantidad;
         if (nuevaCant === 0) await docRef.delete(); else await docRef.update({ cantidad: nuevaCant });
     }
 
-    await db.collection('facturas').add({ 
-        nombre, talla, cantidad, 
-        precio: precioRealCUP, 
-        precioMostrar: precioEscrito, 
-        moneda: moneda,              
-        origen, fecha: HOY 
+    // Guardamos en Firebase el precio SIEMPRE en CUP, pero dejamos constancia de la moneda
+    await db.collection('facturas').add({
+        nombre, talla, cantidad,
+        precio: precioRealCUP,
+        precioMostrar: precioEscrito, // El que escribió el usuario
+        moneda: moneda,               // 'CUP' o 'USD'
+        origen, fecha: HOY
     });
 
     document.getElementById('factura-nombre').value = '';
@@ -117,8 +152,9 @@ async function facturar_orden_ventas() {
     document.getElementById('factura-precio').value = '';
 }
 
-// almacen ancla
-
+// ============================================
+// 📦 AGREGAR AL ALMACÉN
+// ============================================
 async function facturar_orden_almacen() {
     const nombre = document.getElementById('almacen-nombre').value.trim();
     const tipo = document.getElementById('almacen-tipo').value.trim() || 'General';
@@ -133,7 +169,7 @@ async function facturar_orden_almacen() {
     const docSnap = await docRef.get();
     if (docSnap.exists) {
         const e = docSnap.data();
-        await docRef.update({ cantidad: e.cantidad + cantidad, precio, venta, extra: extra || e.extra });
+        await docRef.update({ cantidad: (e.cantidad || 0) + cantidad, precio, venta, extra: extra || e.extra });
     } else {
         await docRef.set({ nombre, tipo, cantidad, precio, venta, extra });
     }
@@ -142,30 +178,77 @@ async function facturar_orden_almacen() {
     alert("¡Producto guardado!");
 }
 
-// terminar ancla
-
+// ============================================
+// 🛑 TERMINAR
+// ============================================
 function terminarVentas() { if(!confirm("¿Cerrar caja?")) return; facturasDelDia = []; gananciaHoy = 0; piezasHoy = 0; document.getElementById('ganancias').innerText = 'Ganancias hoy: $0'; document.getElementById('piezas').innerText = 'Piezas hoy: 0'; actualizar_tabla([], 'tabla-ventas'); }
 function terminarAlmacen() { if(!confirm("¿Cerrar módulo?")) return; }
 
+// ============================================
+// 🔧 AUXILIARES DE PINTADO
+// ============================================
+function crearFila(valores, claseFila, claseCelda = "p-3 text-gray-700") {
+    const fila = document.createElement('tr');
+    fila.className = claseFila;
+    valores.forEach(v => {
+        const c = document.createElement('td');
+        c.className = claseCelda;
+        c.textContent = v; // textContent: los nombres nunca se interpretan como HTML
+        fila.appendChild(c);
+    });
+    return fila;
+}
+
+// Lista de operaciones del cuadro de caja (la más reciente arriba)
+function pintarOperaciones(facturas) {
+    const listaOps = document.getElementById('lista-operaciones');
+    if (!listaOps) return;
+    listaOps.innerHTML = '';
+    if (facturas.length === 0) {
+        listaOps.innerHTML = '<p class="text-gray-400 text-center">Sin operaciones aún</p>';
+        return;
+    }
+    [...facturas].reverse().forEach(f => {
+        const div = document.createElement('div');
+        div.className = `flex justify-between ${f.origen === 'Casa' ? 'text-yellow-700' : 'text-gray-700'}`;
+
+        const izquierda = document.createElement('span');
+        izquierda.textContent = `${f.nombre} `;
+        const origen = document.createElement('span');
+        origen.className = 'text-xs';
+        origen.textContent = `(${f.origen})`;
+        izquierda.appendChild(origen);
+
+        const derecha = document.createElement('span');
+        derecha.className = 'font-medium';
+        derecha.textContent = `+${textoPrecio(f)}`;
+
+        div.append(izquierda, derecha);
+        listaOps.appendChild(div);
+    });
+}
+
+// ============================================
+// 👁️ TIEMPO REAL: TABLA ALMACÉN
+// ============================================
 db.collection('almacen').onSnapshot((snap) => {
     const tbody = document.getElementById('tabla-almacen'); if(!tbody) return; tbody.innerHTML = '';
     snap.forEach(doc => {
         const p = doc.data(); if(!p) return;
-        const fila = document.createElement('tr'); fila.className = "border-b border-gray-100 hover:bg-purple-50";
-        const editar = document.createElement('td').className = "p-3 text-center";
-        editar.innerHTML = `<button onclick="editarProducto('${p.nombre}')" class="text-blue-500 hover:text-blue-700 font-bold text-lg">✏️</button>`;
         const gan = (Number(p.venta)||0) - (Number(p.precio)||0);
-        [p.nombre, p.tipo, `$${p.precio}`, `$${p.venta}`, p.cantidad, `$${gan}`, p.extra||'-'].forEach(v => { const c = document.createElement('td'); c.className = "p-3 text-gray-700"; c.textContent = v; fila.appendChild(c); });
-        
-        tbody.appendChild(fila);
+        tbody.appendChild(crearFila([p.nombre, p.tipo, `$${p.precio}`, `$${p.venta}`, p.cantidad, `$${gan}`, p.extra||'-'], "border-b border-gray-100 hover:bg-purple-50"));
     });
-});
+}, (err) => errorFirebase('el almacén', err));
 
-//ventas del dia ancla
-
+// ============================================
+// 👁️ TIEMPO REAL: VENTAS DEL DÍA (COLOR CASA/TIENDA)
+// ============================================
+// onSnapshot no devuelve una promesa: los errores se reciben en el segundo
+// parámetro. Antes había un .catch() aquí que rompía todo el script al cargar.
 db.collection('facturas').where('fecha', '==', HOY).onSnapshot((snap) => {
     facturasDelDia = []; gananciaHoy = 0; piezasHoy = 0;
-    const tbodyVentas = document.querySelector('#tabla-ventas tbody');
+    // 'tabla-ventas' ya es el <tbody>: antes se buscaba un tbody dentro de él y la tabla nunca se rellenaba
+    const tbodyVentas = document.getElementById('tabla-ventas');
     const tbodyAlmacen = document.getElementById('tabla-vendido-hoy');
     if(tbodyVentas) tbodyVentas.innerHTML = '';
     if(tbodyAlmacen) tbodyAlmacen.innerHTML = '';
@@ -176,61 +259,23 @@ db.collection('facturas').where('fecha', '==', HOY).onSnapshot((snap) => {
         gananciaHoy += (f.precio||0) * (f.cantidad||0); // Siempre suma en CUP
         piezasHoy += (f.cantidad||0);
 
-        // Formatear cómo se muestra el precio
-        const textoPrecio = f.moneda === 'USD' ? `$${f.precioMostrar} USD` : `$${f.precioMostrar} CUP`;
-
-        // COLOR CASA/TIENDA
         const colorFila = f.origen === 'Casa' ? "bg-yellow-50 border-b border-yellow-100" : "border-b border-gray-100 hover:bg-purple-50";
-
-        if(tbodyVentas) {
-            const fila = document.createElement('tr'); fila.className = colorFila;
-            [textoPrecio, f.nombre, f.talla, f.cantidad].forEach(v => { const c = document.createElement('td'); c.className = "p-3 text-gray-700"; c.textContent = v; fila.appendChild(c); });
-            tbodyVentas.appendChild(fila);
-        }
-
-        if(tbodyAlmacen) {
-            const fila = document.createElement('tr'); fila.className = colorFila;
-            [f.origen, f.nombre, textoPrecio, f.cantidad].forEach(v => { const c = document.createElement('td'); c.className = "p-2 text-gray-700 text-sm"; c.textContent = v; fila.appendChild(c); });
-            tbodyAlmacen.appendChild(fila);
-        }
+        if(tbodyVentas) tbodyVentas.appendChild(crearFila([textoPrecio(f), f.nombre, f.talla, f.cantidad], colorFila));
+        if(tbodyAlmacen) tbodyAlmacen.appendChild(crearFila([f.origen, f.nombre, textoPrecio(f), f.cantidad], colorFila, "p-2 text-gray-700 text-sm"));
     });
 
-            document.getElementById('ganancias').innerText = `Ganancias hoy: $${gananciaHoy}`;
-        document.getElementById('piezas').innerText = `Piezas hoy: ${piezasHoy}`;
+    document.getElementById('ganancias').innerText = `Ganancias hoy: $${gananciaHoy}`;
+    document.getElementById('piezas').innerText = `Piezas hoy: ${piezasHoy}`;
 
-        // --- NUEVO: CUADRO DE OPERACIONES ---
-        document.getElementById('resumen-inicio').textContent = dineroEnCaja;
-        // Nota: Sumamos lo que había en caja + lo que vendimos hoy (ya convertido a CUP)
-        document.getElementById('resumen-actual').textContent = dineroEnCaja + gananciaHoy;
+    // Cuadro de operaciones: lo que había en caja + lo vendido hoy (ya convertido a CUP)
+    document.getElementById('resumen-inicio').textContent = dineroEnCaja;
+    document.getElementById('resumen-actual').textContent = dineroEnCaja + gananciaHoy;
+    pintarOperaciones(facturasDelDia);
+}, (err) => errorFirebase('las ventas de hoy', err));
 
-        const listaOps = document.getElementById('lista-operaciones');
-        if(listaOps) {
-            listaOps.innerHTML = '';
-            // Para mostrar la última venta arriba del todo, invertimos el orden
-            let opsArray = [];
-            snap.forEach(doc => opsArray.push(doc.data()));
-            opsArray.reverse().forEach(f => {
-                if(!f) return;
-                const textoPrecio = f.moneda === 'USD' ? `$${f.precioMostrar} USD` : `$${f.precioMostrar} CUP`;
-                const colorTexto = f.origen === 'Casa' ? 'text-yellow-700' : 'text-gray-700';
-                
-                const div = document.createElement('div');
-                div.className = `flex justify-between ${colorTexto}`;
-                div.innerHTML = `
-                    <span>${f.nombre} <span class="text-xs">(${f.origen})</span></span>
-                    <span class="font-medium">+${textoPrecio}</span>
-                `;
-                listaOps.appendChild(div);
-            });
-            
-            if(opsArray.length === 0) {
-                listaOps.innerHTML = '<p class="text-gray-400 text-center">Sin operaciones aún</p>';
-            }
-        }
-}).catch(err => console.error("Error índice facturas:", err));
-
-// estadisticas ancla
-
+// ============================================
+// 📈 ESTADÍSTICAS (suman todo en CUP)
+// ============================================
 async function resumir_ventas(periodo) {
     let snap = periodo === 'hoy' ? await db.collection('facturas').where('fecha', '==', HOY).get() : await db.collection('facturas').get();
     let facts = []; snap.forEach(d => facts.push(d.data()));
@@ -241,8 +286,8 @@ async function resumir_ventas(periodo) {
     document.getElementById('stat-piezas').textContent = p;
     document.getElementById('stat-popular').textContent = Object.entries(pop).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'N/A';
     document.getElementById('stat-top-ganancia').textContent = Object.entries(gan).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'N/A';
-    pintarRanking('tabla-popular', Object.entries(pop).sort((a,b)=>b[1]-a[1]));
-    pintarRanking('tabla-ganancias', Object.entries(gan).sort((a,b)=>b[1]-a[1]));
+    pintarRanking('tabla-popular', Object.entries(pop).sort((a,b)=>b[1]-a[1]), false);
+    pintarRanking('tabla-ganancias', Object.entries(gan).sort((a,b)=>b[1]-a[1]), true);
 }
 
 async function resumir_almacen() {
@@ -255,69 +300,49 @@ async function resumir_almacen() {
     document.getElementById('stat-potencial').textContent = `$${pot}`;
     document.getElementById('stat-mas-stock').textContent = top.n;
     const tb = document.getElementById('tabla-almacen-inventario'); if(!tb) return; tb.innerHTML='';
-    arr.forEach((p,i) => { const f = document.createElement('tr'); f.className="border-b border-gray-100 hover:bg-purple-50"; [i+1, p.tipo, p.nombre, p.cantidad, `$${p.precio}`, `$${p.venta}`, `$${(p.venta||0)-(p.precio||0)}`, `$${(p.precio||0)*(p.cantidad||0)}`, p.extra||'-'].forEach(v => { const c = document.createElement('td'); c.className="p-3 text-gray-700"; c.textContent=v; f.appendChild(c); }); tb.appendChild(f); });
+    arr.forEach((p,i) => tb.appendChild(crearFila([i+1, p.tipo, p.nombre, p.cantidad, `$${p.precio}`, `$${p.venta}`, `$${(p.venta||0)-(p.precio||0)}`, `$${(p.precio||0)*(p.cantidad||0)}`, p.extra||'-'], "border-b border-gray-100 hover:bg-purple-50")));
 }
 
-// pintar ancla
-function pintarRanking(id, datos) {
+// ============================================
+// 🔧 AUXILIARES
+// ============================================
+// esDinero indica si la columna es un importe (antes se decidía por si el número pasaba de 100)
+function pintarRanking(id, datos, esDinero) {
     const tb = document.getElementById(id); if(!tb) return; tb.innerHTML='';
-    datos.slice(0,10).forEach((item,i) => { const f = document.createElement('tr'); f.className="border-b border-gray-100 hover:bg-purple-50"; [i+1, item[0], typeof item[1]==='number' && item[1]>100 ? `$${item[1]}` : item[1]].forEach(v => { const c = document.createElement('td'); c.className="p-3 text-gray-700"; c.textContent=v; f.appendChild(c); }); tb.appendChild(f); });
+    datos.slice(0,10).forEach((item,i) => tb.appendChild(crearFila([i+1, item[0], esDinero ? `$${item[1]}` : item[1]], "border-b border-gray-100 hover:bg-purple-50")));
 }
 function actualizar_tabla(fuente, tablaId) {
-    const tb = document.querySelector(`#${tablaId} tbody`); if(!tb) return; tb.innerHTML='';
-    fuente.forEach(el => { const f = document.createElement('tr'); f.className="border-b border-gray-100 hover:bg-purple-50"; Object.values(el).forEach(v => { const c = document.createElement('td'); c.className="p-3 text-gray-700"; c.textContent=v; f.appendChild(c); }); tb.appendChild(f); });
+    const tb = document.getElementById(tablaId); if(!tb) return; tb.innerHTML='';
+    fuente.forEach(el => tb.appendChild(crearFila([textoPrecio(el), el.nombre, el.talla, el.cantidad], "border-b border-gray-100 hover:bg-purple-50")));
 }
 document.getElementById('mostrar-datos').addEventListener('click', () => actualizar_tabla(facturasDelDia, 'tabla-ventas'));
 
-// recalcular ancla
-
+// ============================================
+// 📊 RECALCULAR CUADRO (Sincronización forzada)
+// ============================================
 async function recalcularCuadroOperaciones() {
-    // todas las ventas de hoy se piden
-    const snap = await db.collection('facturas').where('fecha', '==', HOY).get();
-    let gananciaCalculada = 0;
-    let opsArray = [];
-    
-    snap.forEach(doc => {
-        const f = doc.data(); if(!f) return;
-        gananciaCalculada += (f.precio||0) * (f.cantidad||0);
-        opsArray.push(f);
-    });
-
-    // actualizar
-    document.getElementById('ganancias').innerText = `Ganancias hoy: $${gananciaCalculada}`;
-    document.getElementById('resumen-inicio').textContent = dineroEnCaja;
-    document.getElementById('resumen-actual').textContent = dineroEnCaja + gananciaCalculada;
-
-    // Pintamos la lista de operaciones
-    const listaOps = document.getElementById('lista-operaciones');
-    if(listaOps) {
-        listaOps.innerHTML = '';
-        // Invertimos el arreglo para que la venta más reciente quede arriba
-        opsArray.reverse().forEach(f => {
-            const textoPrecio = f.moneda === 'USD' ? `$${f.precioMostrar} USD` : `$${f.precioMostrar} CUP`;
-            const colorTexto = f.origen === 'Casa' ? 'text-yellow-700' : 'text-gray-700';
-            
-            const div = document.createElement('div');
-            div.className = `flex justify-between ${colorTexto}`;
-            div.innerHTML = `
-                <span>${f.nombre} <span class="text-xs">(${f.origen})</span></span>
-                <span class="font-medium">+${textoPrecio}</span>
-            `;
-            listaOps.appendChild(div);
+    try {
+        // Pedimos a Firebase TODAS las ventas de hoy
+        const snap = await db.collection('facturas').where('fecha', '==', HOY).get();
+        let gananciaCalculada = 0;
+        const opsArray = [];
+        snap.forEach(doc => {
+            const f = doc.data(); if(!f) return;
+            gananciaCalculada += (f.precio||0) * (f.cantidad||0);
+            opsArray.push(f);
         });
-        
-        if(opsArray.length === 0) {
-            listaOps.innerHTML = '<p class="text-gray-400 text-center">Sin operaciones aún</p>';
-        }
+
+        document.getElementById('ganancias').innerText = `Ganancias hoy: $${gananciaCalculada}`;
+        document.getElementById('resumen-inicio').textContent = dineroEnCaja;
+        document.getElementById('resumen-actual').textContent = dineroEnCaja + gananciaCalculada;
+        pintarOperaciones(opsArray);
+    } catch (err) {
+        errorFirebase('el cuadro de operaciones', err);
     }
 }
 
-// llamar a la app si esta despierta
-db.collection('facturas').where('fecha', '==', HOY).onSnapshot(() => {
-    if (!document.getElementById('factura1').classList.contains('hidden')) {
-        recalcularCuadroOperaciones();
-    }
-}).catch(err => console.error("Error índice facturas:", err));
-
+// ============================================
+// 🚀 INICIO
+// ============================================
 inicializarCaja();
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').then(() => console.log('App lista')).catch((err) => console.log('Error SW:', err)); }
